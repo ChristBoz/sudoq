@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sudoq/logic/sudoku_game.dart';
 
@@ -31,6 +33,39 @@ void main() {
       }
     }
     expect(game.isComplete, isTrue);
+  });
+
+  group('random puzzles', () {
+    test('every puzzle has exactly one solution', () {
+      for (var seed = 0; seed < 200; seed++) {
+        final game = SudokuGame.random(Random(seed));
+        expect(game.countSolutions(), 1, reason: 'seed $seed');
+      }
+    });
+
+    test('puzzles start incomplete, with no conflicts among the clues', () {
+      for (var seed = 0; seed < 50; seed++) {
+        final game = SudokuGame.random(Random(seed));
+        expect(game.isComplete, isFalse);
+        for (var r = 0; r < 4; r++) {
+          for (var c = 0; c < 4; c++) {
+            expect(game.hasConflict(r, c), isFalse);
+          }
+        }
+      }
+    });
+
+    test('puzzles differ from one another', () {
+      final puzzles = {
+        for (var seed = 0; seed < 30; seed++)
+          SudokuGame.random(Random(seed)).cells.toString(),
+      };
+      expect(puzzles.length, greaterThan(20));
+    });
+
+    test('the fixed puzzle also has exactly one solution', () {
+      expect(SudokuGame().countSolutions(), 1);
+    });
   });
 
   test('reset clears the entries but keeps the clues', () {

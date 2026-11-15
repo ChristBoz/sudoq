@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:sudoq/models/app_event.dart';
 import 'package:sudoq/models/usage_result.dart';
-import 'package:sudoq/state/app_state.dart';
 
 import '../fakes.dart';
 
@@ -167,12 +166,7 @@ void main() {
       await t.state.setNotificationsEnabled(false);
 
       // A new AppState reading the same storage = the app restarted.
-      final restarted = AppState(
-        usage: t.usage,
-        storage: t.storage,
-        notifications: t.notifications,
-        background: t.background,
-      );
+      final restarted = t.newState();
       await restarted.loadSaved();
 
       expect(restarted.onboarded, isTrue);
@@ -186,13 +180,7 @@ void main() {
       await t.trackVideo(limit: 45);
       expect(await t.state.refresh(), hasLength(1));
 
-      final restarted = AppState(
-        usage: t.usage,
-        storage: t.storage,
-        notifications: t.notifications,
-        background: t.background,
-        clock: () => t.now,
-      );
+      final restarted = t.newState();
       await restarted.loadSaved();
       expect(await restarted.refresh(), isEmpty);
     });

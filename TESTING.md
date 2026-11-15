@@ -28,7 +28,7 @@ Before each run: uninstall suDOq, then install it again (`flutter run`).
 | # | Step | Expected | Covers |
 |---|---|---|---|
 | 1 | Open suDOq | Onboarding explains usage access | FR01 |
-| 2 | Tap "Continue without access", pick one app, tap Done | Dashboard shows "Usage data unavailable" and a dash, not 0 | FR01, AC06 |
+| 2 | Tap "Continue without these permissions", pick one app, tap Done | Dashboard shows "Usage data unavailable" and a dash, not 0 | FR01, AC06 |
 | 3 | Tap "Grant usage access", switch suDOq on, go back | Notice disappears, minutes are shown | FR01, FR03 |
 | 4 | Compare one app's minutes with Digital Wellbeing | Within about 2 minutes of each other | FR03 |
 | 5 | Open "Select apps" | Entertainment apps listed; WhatsApp/Phone only after "Show all apps" | FR02 |
@@ -39,6 +39,30 @@ Before each run: uninstall suDOq, then install it again (`flutter run`).
 | 10 | Keep using it past the goal, wait up to 15 min | Notification with Play Sudoku / View usage / Dismiss | FR07, AC01 |
 | 11 | Tap "Play Sudoku", try to change a clue, enter a wrong digit, then exit | Puzzle opens; clue stays; conflict is marked and explained; exit works | FR08, AC03 |
 | 12 | Back on the dashboard | Usage and goal are unchanged by the puzzle | AC04 |
+
+## Blocking script (the Sudoku gate)
+
+Needs both permissions: "Usage access" and "Display over other apps".
+Quick setup: give one app a 1-minute goal and use it for a minute, or
+turn on Demo mode and add simulated minutes past the goal.
+
+| # | Step | Expected |
+|---|---|---|
+| B1 | Dashboard, with "Display over other apps" off | Notice "Sudoku cannot appear over apps" with a button to allow it |
+| B2 | Allow it, return to suDOq | Notice disappears; a permanent "suDOq is watching" notification is present |
+| B3 | Open an app that is under its goal | Nothing happens |
+| B4 | Open an app that is past its goal | Within about a second, "Daily goal reached" with a Sudoku appears |
+| B5 | Try the back button | You land on the home screen, not in the app |
+| B6 | Open the app again, tap "Leave" | Home screen again |
+| B7 | Open the app again, check "Continue" | Disabled until the puzzle is solved |
+| B8 | Solve the puzzle, tap "Continue" | The app opens and can be used |
+| B9 | Go to the home screen, open the app again | A new, different puzzle appears |
+| B10 | While using the app after solving, turn the screen off and on | The app is still usable, no new puzzle |
+| B11 | Use an app until it crosses its goal while open | The puzzle appears within about 15 seconds |
+| B12 | Settings: switch off "Require Sudoku past the goal" | Apps past their goal open normally |
+| B13 | Settings: pause monitoring | Apps past their goal open normally |
+| B14 | Restart the phone, do not open suDOq, open the blocked app | The puzzle still appears |
+| B15 | Leave the phone unused for an hour, then repeat B4 | The puzzle still appears (the service survived) |
 
 Extra checks (not every run):
 

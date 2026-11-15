@@ -8,6 +8,7 @@ class AppSettings {
     this.onboarded = false,
     this.monitoringPaused = false,
     this.notificationsEnabled = true,
+    this.blockingEnabled = true,
     this.historyStartMs,
     List<TrackedApp>? tracked,
   }) : tracked = tracked ?? [];
@@ -20,6 +21,9 @@ class AppSettings {
 
   bool notificationsEnabled;
 
+  /// True when opening an app past its goal requires solving a Sudoku.
+  bool blockingEnabled;
+
   /// Set when the user deletes their history: usage before this moment is
   /// never read again. Milliseconds since 1970, or null if never deleted.
   int? historyStartMs;
@@ -31,6 +35,7 @@ class AppSettings {
     'onboarded': onboarded,
     'monitoringPaused': monitoringPaused,
     'notificationsEnabled': notificationsEnabled,
+    'blockingEnabled': blockingEnabled,
     'historyStartMs': historyStartMs,
     'tracked': [for (final app in tracked) app.toJson()],
   };
@@ -39,6 +44,7 @@ class AppSettings {
     onboarded: json['onboarded'] as bool? ?? false,
     monitoringPaused: json['monitoringPaused'] as bool? ?? false,
     notificationsEnabled: json['notificationsEnabled'] as bool? ?? true,
+    blockingEnabled: json['blockingEnabled'] as bool? ?? true,
     historyStartMs: json['historyStartMs'] as int?,
     tracked: [
       for (final app in json['tracked'] as List? ?? const [])

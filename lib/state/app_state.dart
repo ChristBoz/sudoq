@@ -14,6 +14,7 @@ import '../models/installed_app.dart';
 import '../models/tracked_app.dart';
 import '../models/usage_result.dart';
 import '../services/background_service.dart';
+import '../services/blocker_service.dart';
 import '../services/notification_service.dart';
 import '../services/storage_service.dart';
 import '../services/usage_monitor.dart';
@@ -25,6 +26,7 @@ class AppState extends ChangeNotifier {
     required StorageService storage,
     required this._notifications,
     required this._background,
+    required this._blocker,
     DateTime Function()? clock,
   }) : _usage = usage,
        _storage = storage,
@@ -35,6 +37,7 @@ class AppState extends ChangeNotifier {
   final StorageService _storage;
   final NotificationService _notifications;
   final BackgroundService _background;
+  final BlockerService _blocker;
   final DateTime Function() _clock;
   final UsageMonitor _monitor;
 
@@ -48,11 +51,18 @@ class AppState extends ChangeNotifier {
   bool get monitoringPaused => _settings.monitoringPaused;
   bool get notificationsEnabled => _settings.notificationsEnabled;
 
+  /// Whether opening an app past its goal requires solving a Sudoku.
+  bool get blockingEnabled => _settings.blockingEnabled;
+
   /// The apps the user chose to monitor.
   List<TrackedApp> get trackedApps => List.unmodifiable(_settings.tracked);
 
   /// Whether "Usage access" is switched on in Android settings.
   bool usageAccessGranted = false;
+
+  /// Whether "Display over other apps" is switched on. The blocker cannot
+  /// bring the puzzle to the front without it.
+  bool overlayGranted = false;
 
   /// Today's usage, or the reason there is none.
   UsageResult usage = const UsageUnavailable(UsageProblem.noPermission);
@@ -120,8 +130,50 @@ class AppState extends ChangeNotifier {
   Future<List<TriggeredEvent>> start({NotificationTapHandler? onTap}) async {
     await _notifications.init(onTap: onTap);
     await _syncBackground();
+    await _syncBlocker();
     return refresh();
   }
+
+  // ---- Blocker -----------------------------------------------------------
+
+  /// The app the blocker just stopped, if any. The puzzle must be shown
+  /// for it. Asking clears it, so it is reported only once.
+  Future<TrackedApp?> takePendingGate() async {
+    final packageName = await _blocker.takePendingGate();
+    if (packageName == null) return null;
+    return trackedApp(packageName) ??
+        TrackedApp(packageName: packageName, name: 'This app');
+  }
+
+  /// The puzzle was solved: the app can be used until the user leaves it.
+  Future<void> passGate(TrackedApp app) => _blocker.passGate(app.packageName);
+
+  /// The user chose not to solve the puzzle: back to the home screen.
+  Future<void> leaveGate() => _blocker.goHome();
+
+  Future<void> openOverlaySettings() => _blocker.openOverlaySettings();
+
+  Future<void> setBlockingEnabled(bool value) async {
+    _settings.blockingEnabled = value;
+    await _save();
+  }
+
+  /// Sends the current goals to the blocker and switches it on or off.
+  Future<void> _syncBlocker() => _blocker.configure(
+    enabled:
+        _settings.onboarded &&
+        _settings.blockingEnabled &&
+        !_settings.monitoringPaused,
+    historyStartMs: _settings.historyStartMs,
+    rules: {
+      for (final app in _settings.tracked)
+        if (app.limitMinutes != null)
+          app.packageName: BlockRule(
+            limitMinutes: app.limitMinutes!,
+            extraMinutes: simulatedMinutes(app.packageName),
+          ),
+    },
+  );
 
   // ---- Usage -------------------------------------------------------------
 
@@ -142,6 +194,7 @@ class AppState extends ChangeNotifier {
     usageAccessGranted = result.hasAccess;
     usage = result.usage;
     _flags = result.flags;
+    overlayGranted = await _blocker.hasOverlayPermission();
     notifyListeners();
     return _settings.notificationsEnabled ? result.events : const [];
   }
@@ -179,6 +232,7 @@ class AppState extends ChangeNotifier {
     demoMode = value;
     if (!value) _simulated.clear();
     notifyListeners();
+    _syncBlocker();
   }
 
   // ---- Apps and goals ----------------------------------------------------
@@ -220,6 +274,7 @@ class AppState extends ChangeNotifier {
   /// Demo mode only: adds simulated minutes and returns what to show.
   Future<List<TriggeredEvent>> simulateUsage(TrackedApp app, int minutes) {
     _simulated[app.packageName] = simulatedMinutes(app.packageName) + minutes;
+    _syncBlocker(); // the blocker counts simulated minutes too
     // If a check is already running, wait for it so the new minutes count.
     final running = _refreshing;
     if (running != null) return running.then((_) => refresh());
@@ -242,9 +297,12 @@ class AppState extends ChangeNotifier {
 
   // ---- Helpers -----------------------------------------------------------
 
+  /// Every change to the settings goes through here, so the saved copy
+  /// and the blocker's rules never fall behind.
   Future<void> _save() async {
     notifyListeners();
     await _storage.saveSettings(_settings);
+    await _syncBlocker();
   }
 
   /// The background check runs only after onboarding and while not paused.

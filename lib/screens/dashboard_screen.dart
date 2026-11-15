@@ -126,11 +126,20 @@ class DashboardScreen extends StatelessWidget {
             body: 'Usage could not be read on this device.',
           ),
         },
+      if (appState.blockingEnabled && !appState.overlayGranted)
+        NoticeCard(
+          title: 'Sudoku cannot appear over apps',
+          body:
+              '"Display over other apps" is off, so suDOq cannot show the '
+              'Sudoku when you open an app that is past its goal.',
+          actionLabel: 'Allow display over other apps',
+          onAction: appState.openOverlaySettings,
+        ),
       if (appState.monitoringPaused)
         const NoticeCard(
           title: 'Monitoring paused',
           body:
-              'No warnings or limit notices are shown while paused. '
+              'No warnings, limit notices or Sudoku while paused. '
               'Resume in Settings.',
         ),
       if (appState.demoMode)

@@ -6,6 +6,7 @@ import 'package:sudoq/models/installed_app.dart';
 import 'package:sudoq/models/tracked_app.dart';
 import 'package:sudoq/models/usage_result.dart';
 import 'package:sudoq/services/background_service.dart';
+import 'package:sudoq/services/blocker_service.dart';
 import 'package:sudoq/services/notification_service.dart';
 import 'package:sudoq/services/storage_service.dart';
 import 'package:sudoq/services/usage_service.dart';
@@ -131,17 +132,57 @@ class FakeBackgroundService implements BackgroundService {
   Future<void> stop() async => running = false;
 }
 
+/// Pretends to be the Kotlin blocker. Tests set [pendingGate] to act as
+/// if a blocked app had just been opened.
+class FakeBlockerService implements BlockerService {
+  bool overlay = true;
+  bool overlaySettingsOpened = false;
+
+  /// The last rules the app sent.
+  bool enabled = false;
+  int? historyStartMs;
+  Map<String, BlockRule> rules = {};
+
+  String? pendingGate;
+  final List<String> passed = [];
+  int wentHome = 0;
+
+  @override
+  Future<bool> hasOverlayPermission() async => overlay;
+
+  @override
+  Future<void> openOverlaySettings() async => overlaySettingsOpened = true;
+
+  @override
+  Future<void> configure({
+    required bool enabled,
+    required int? historyStartMs,
+    required Map<String, BlockRule> rules,
+  }) async {
+    this.enabled = enabled;
+    this.historyStartMs = historyStartMs;
+    this.rules = rules;
+  }
+
+  @override
+  Future<String?> takePendingGate() async {
+    final gate = pendingGate;
+    pendingGate = null;
+    return gate;
+  }
+
+  @override
+  Future<void> passGate(String packageName) async => passed.add(packageName);
+
+  @override
+  Future<void> goHome() async => wentHome++;
+}
+
 /// An [AppState] wired to fakes, with a clock the test controls.
 class TestApp {
   TestApp({DateTime? now}) : now = now ?? DateTime(2026, 11, 14, 15, 0) {
     usage.now = this.now;
-    state = AppState(
-      usage: usage,
-      storage: storage,
-      notifications: notifications,
-      background: background,
-      clock: () => this.now,
-    );
+    state = newState();
   }
 
   DateTime now;
@@ -149,7 +190,18 @@ class TestApp {
   final storage = MemoryStorageService();
   final notifications = FakeNotificationService();
   final background = FakeBackgroundService();
+  final blocker = FakeBlockerService();
   late final AppState state;
+
+  /// A fresh AppState on the same storage, as after restarting the app.
+  AppState newState() => AppState(
+    usage: usage,
+    storage: storage,
+    notifications: notifications,
+    background: background,
+    blocker: blocker,
+    clock: () => now,
+  );
 
   /// Moves the clock, e.g. past midnight.
   void setNow(DateTime value) {

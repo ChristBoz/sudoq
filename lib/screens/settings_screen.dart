@@ -61,9 +61,33 @@ class SettingsScreen extends StatelessWidget {
               ),
               onTap: appState.openUsageSettings,
             ),
+            ListTile(
+              leading: Icon(
+                appState.overlayGranted
+                    ? Icons.check_circle_outline
+                    : Icons.error_outline,
+              ),
+              title: const Text('Display over other apps'),
+              subtitle: Text(
+                appState.overlayGranted
+                    ? 'Granted. Tap to change it in Android settings.'
+                    : 'Not granted. The Sudoku cannot appear over a '
+                          'blocked app. Tap to open Android settings.',
+              ),
+              onTap: appState.openOverlaySettings,
+            ),
+            SwitchListTile(
+              title: const Text('Require Sudoku past the goal'),
+              subtitle: const Text(
+                'Opening an app that reached its daily goal shows a '
+                'Sudoku to solve first, every time',
+              ),
+              value: appState.blockingEnabled,
+              onChanged: appState.setBlockingEnabled,
+            ),
             SwitchListTile(
               title: const Text('Pause monitoring'),
-              subtitle: const Text('No warnings or limit notices while on'),
+              subtitle: const Text('No warnings, notices or Sudoku while on'),
               value: appState.monitoringPaused,
               onChanged: appState.setMonitoringPaused,
             ),

@@ -74,4 +74,32 @@ class SudoqUsage {
       },
     );
   }
+
+  // ---- Blocker -------------------------------------------------------------
+
+  /// Whether "Display over other apps" is switched on for this app. The
+  /// blocker needs it to bring the puzzle to the front.
+  static Future<bool> hasOverlayPermission() async =>
+      await _channel.invokeMethod<bool>('hasOverlayPermission') ?? false;
+
+  /// Opens the Android screen where "Display over other apps" is granted.
+  static Future<void> openOverlaySettings() =>
+      _channel.invokeMethod<void>('openOverlaySettings');
+
+  /// Saves the blocker's rules (see BlockerConfig.kt for the JSON shape)
+  /// and starts or stops the background service to match.
+  static Future<void> configureBlocker(String json) =>
+      _channel.invokeMethod<void>('configureBlocker', {'json': json});
+
+  /// The package the blocker just stopped, or null. Reading it clears it.
+  static Future<String?> takePendingGate() =>
+      _channel.invokeMethod<String>('takePendingGate');
+
+  /// The puzzle for [packageName] was solved: allow the app until the user
+  /// leaves it, and bring it back to the front.
+  static Future<void> passGate(String packageName) =>
+      _channel.invokeMethod<void>('passGate', {'package': packageName});
+
+  /// Sends the user to the phone's home screen.
+  static Future<void> goHome() => _channel.invokeMethod<void>('goHome');
 }

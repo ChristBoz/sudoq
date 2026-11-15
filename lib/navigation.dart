@@ -6,6 +6,8 @@ import 'package:flutter/material.dart';
 
 import 'logic/usage_check.dart';
 import 'models/app_event.dart';
+import 'models/tracked_app.dart';
+import 'screens/gate_screen.dart';
 import 'screens/limit_reached_screen.dart';
 import 'screens/sudoku_screen.dart';
 import 'services/notification_service.dart';
@@ -46,8 +48,28 @@ void showEvents(List<TriggeredEvent> events) {
 }
 
 /// Re-reads usage and shows whatever became due.
+///
+/// Runs every time suDOq comes to the front. If the blocker brought it
+/// to the front because a blocked app was opened, the puzzle gate is
+/// shown and takes priority over ordinary notices.
 Future<void> refreshAndShowEvents() async {
-  showEvents(await appState.refresh());
+  final blockedApp = await appState.takePendingGate();
+  final events = await appState.refresh();
+
+  if (blockedApp != null) {
+    showGate(blockedApp);
+  } else {
+    showEvents(events);
+  }
+}
+
+/// Opens the puzzle that must be solved before [app] can be used again.
+void showGate(TrackedApp app) {
+  final navigator = navigatorKey.currentState;
+  if (navigator == null) return;
+  // Only one gate at a time: close anything left open from before.
+  navigator.popUntil((route) => route.isFirst);
+  navigator.push(MaterialPageRoute(builder: (_) => GateScreen(app: app)));
 }
 
 /// Opens the right screen after a tap on a notification or its buttons.
